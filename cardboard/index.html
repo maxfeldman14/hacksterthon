@@ -25,13 +25,35 @@
   <script src="js/third-party/threejs/StereoEffect.js"></script>
   <script src="js/third-party/threejs/DeviceOrientationControls.js"></script>
   <script src="js/third-party/threejs/OrbitControls.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.3.4.js"></script>
+  <script src="http://mrdoob.github.com/three.js/examples/fonts/helvetiker_regular.typeface.js"></script>
 
   <script>
     var camera, scene, renderer;
     var effect, controls;
     var element, container;
+    var paddle;
+    var ball;
+    var ballv;
+    var leapdata;
+    var score = 0;
+    var activeController = null;
+    var disableRendering = false;
 
     var clock = new THREE.Clock();
+
+    var leapServer = 'ws://localhost:6437/v6.json';
+    var remoteLeapServer = 'http://10.90.0.196:8080';
+    var multiplayerServer = 'http://10.90.0.196:8080';
+
+    var arena = {
+      top: 14,
+      bottom: 5,
+      left: -5,
+      right: 5,
+      front: -10,
+      back: 15,
+    }
 
     init();
     animate();
@@ -42,20 +64,21 @@
       container = document.getElementById('example');
       container.appendChild(element);
 
+      // Switch the commented line to disable/enable stereo
       effect = new THREE.StereoEffect(renderer);
+      //effect = renderer;
 
       scene = new THREE.Scene();
 
       camera = new THREE.PerspectiveCamera(90, 1, 0.001, 700);
-      camera.position.set(0, 10, 0);
+      camera.position.set(0, 10, -5);
       scene.add(camera);
 
       controls = new THREE.OrbitControls(camera, element);
-      controls.rotateUp(Math.PI / 4);
       controls.target.set(
-        camera.position.x + 0.1,
+        camera.position.x,
         camera.position.y,
-        camera.position.z
+        camera.position.z + 0.1
       );
       controls.noZoom = true;
       controls.noPan = true;
@@ -74,6 +97,7 @@
         window.removeEventListener('deviceorientation', setOrientationControls, true);
       }
       window.addEventListener('deviceorientation', setOrientationControls, true);
+      window.addEventListener('keypress', keypress, false);
 
 
       var light = new THREE.HemisphereLight(0x777777, 0x000000, 0.6);
@@ -92,7 +116,8 @@
         specular: 0xffffff,
         shininess: 20,
         shading: THREE.FlatShading,
-        map: texture
+        map: texture,
+        side: THREE.DoubleSide
       });
 
       var geometry = new THREE.PlaneGeometry(1000, 1000);
@@ -101,70 +126,59 @@
       mesh.rotation.x = -Math.PI / 2;
       scene.add(mesh);
 
-      var rectLength = 1, rectWidth = 1;
-
-      var rectShape = new THREE.Shape();
-      rectShape.moveTo( 0,0 );
-      rectShape.lineTo( 0, rectWidth );
-      rectShape.lineTo( rectLength, rectWidth );
-      rectShape.lineTo( rectLength, 0 );
-      rectShape.lineTo( 0, 0 );
-
-      var rectTex = THREE.ImageUtils.loadTexture(
-        'textures/patterns/max.png'
-      );
-      rectTex.anisotropy = renderer.getMaxAnisotropy();
-
-      var rectMat = new THREE.MeshPhongMaterial({
+      var arenaGeom = new THREE.BoxGeometry(
+          arena.right - arena.left,
+          arena.top - arena.bottom,
+          0.1);
+      var arenaMesh = new THREE.Mesh(arenaGeom, new THREE.MeshBasicMaterial({
         color: 0xffffff,
-        specular: 0xffffff,
-        shininess: 20,
-        shading: THREE.FlatShading,
-        map: rectTex,
         transparent: true,
-      });
+        opacity: 0.5
+      }));
+      arenaMesh.position.x = (arena.right + arena.left) / 2.0;
+      arenaMesh.position.y = (arena.top + arena.bottom) / 2.0;
+      arenaMesh.position.z = arena.back;
+      scene.add(arenaMesh);
 
-      var rectGeom = new THREE.ShapeGeometry( rectShape );
-
-      var rectMesh = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh.position.y += 5;
-      rectMesh.position.z -= 15;
-      rectMesh.scale.x += 15;
-      rectMesh.scale.y += 15;
-      scene.add( rectMesh );
-
-      var rectMesh2 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh2.position.y += 5;
-      rectMesh2.position.x += 15;
-      rectMesh2.scale.x += 15;
-      rectMesh2.scale.y += 15;
-      rectMesh2.rotation.y = -Math.PI / 2;
-      scene.add( rectMesh2 );
-
-      var rectMesh3 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh3.position.y += 5;
-      rectMesh3.position.z += 15;
-      rectMesh3.scale.x += 15;
-      rectMesh3.scale.y += 15;
-      rectMesh3.rotation.y = -Math.PI;
-      scene.add( rectMesh3 );
-
-      var rectMesh4 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh4.position.y += 5;
-      rectMesh4.position.x -= 15;
-      rectMesh4.scale.x += 15;
-      rectMesh4.scale.y += 15;
-      rectMesh4.rotation.y = Math.PI / 2;
-      scene.add( rectMesh4 );
-
-      var boxGeom = new THREE.BoxGeometry(1, 1, 1);
-      var boxMesh = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial( { color: 0x00ff00 }));
-      boxMesh.position.y += 3;
-
+      var boxGeom = new THREE.BoxGeometry(3, 3, 0.2);
+      var boxMesh = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial( {
+        color: 0x777777,
+        transparent: true,
+        opacity: 0.5,
+      }));
+      boxMesh.position.y = 10;
+      boxMesh.position.z = 5;
+      
+      paddle = boxMesh;
       scene.add( boxMesh );
+
+      ball = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 32, 32),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+          }));
+      ball.position.y = 10;
+      ball.position.z = 15;
+      scene.add(ball);
+      ballv = {
+        x: 1,
+        y: 1,
+        z: -5,
+      };
+
+      updateScore();
 
       window.addEventListener('resize', resize, false);
       setTimeout(resize, 1);
+
+      initControl();
+    }
+
+    function keypress(e) {
+      if (e.keyCode == 32) {
+        console.log('toggle rendering');
+        disableRendering = !disableRendering;
+      }
     }
 
     function resize() {
@@ -184,6 +198,45 @@
       camera.updateProjectionMatrix();
 
       controls.update(dt);
+
+      ball.position.x += ballv.x * dt;
+      ball.position.y += ballv.y * dt;
+      ball.position.z += ballv.z * dt;
+      if (ball.position.x < -5 && ballv.x < 0 ||
+          ball.position.x > 5 && ballv.x > 0) {
+        ballv.x *= -1;
+      }
+      if (ball.position.y < 5 && ballv.y < 0 ||
+          ball.position.y > 13 && ballv.y > 0) {
+        ballv.y *= -1;
+      }
+      if(ball.position.z > 15 && ballv.z > 0) {
+        ballv.z *= -1;
+      }
+      if (ball.position.z < 6.2 && ballv.z < 0) {
+        if (ball.position.x > (paddle.position.x - 2.5) &&
+          ball.position.x < (paddle.position.x + 2.5) &&
+          ball.position.y > (paddle.position.y - 2.5) &&
+          ball.position.y < (paddle.position.y + 2.5)) {
+          ballv.x *= 1.05;
+          ballv.y *= 1.05;
+          ballv.z *= -1.05;
+          score += 1;
+          updateScore();
+        } else {
+          ball.position.x = 0;
+          ball.position.y = 10;
+          ball.position.z = 15;
+          ballv = {
+            x: 1,
+            y: 1,
+            z: -5,
+          };
+          score = 0;
+          updateScore();
+        }
+      }
+
     }
 
     function render(dt) {
@@ -191,6 +244,9 @@
     }
 
     function animate(t) {
+      if (disableRendering) {
+        return;
+      }
       requestAnimationFrame(animate);
 
       update(clock.getDelta());
@@ -207,6 +263,95 @@
       } else if (container.webkitRequestFullscreen) {
         container.webkitRequestFullscreen();
       }
+    }
+
+    function initControl() {
+      initLeap();
+      initRemoteLeap();
+    }
+
+    function activatePaddle(controlType) {
+      paddle.material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 0.2,
+      });
+      activeController = controlType;
+    }
+
+    function updateScore() {
+      var scoreMesh = new THREE.Mesh(
+          new THREE.TextGeometry('' + score, {
+            size: 1,
+            height: 0.1,
+          }),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+          }));
+      scoreMesh.position.y = 15;
+      scoreMesh.position.x = -5;
+      scoreMesh.position.z = 15;
+      scoreMesh.rotation.y = Math.PI;
+      scoreMesh.name = "scoreMesh";
+      var oldScore = scene.getObjectByName("scoreMesh");
+      if (oldScore) {
+        scene.remove(oldScore);
+      }
+      scene.add(scoreMesh);
+    }
+
+    function initLeap() {
+      var ws = new WebSocket(leapServer);
+      var socket = io(remoteLeapServer);
+
+      ws.onopen = function(event) {
+        var enableMessage = JSON.stringify({enableGestures: true});
+        ws.send(enableMessage); // Enable gestures
+        ws.send(JSON.stringify({focused: true})); // claim focus
+
+        console.log('connected to leap');
+      }
+
+      socket.onconnection = function(event) {
+        console.log('connected to server');
+      }
+
+      ws.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        if (!data.hands || data.hands.length == 0) {
+          return;
+        }
+        if (!activeController) {
+          activatePaddle("localLeap");
+        }
+        hand = data.hands[0];
+        var x = hand.palmPosition[0];
+        var y = hand.palmPosition[1];
+        if (activeController == "localLeap") {
+          updatePaddle(x, y);
+        }
+        socket.emit('send', JSON.stringify({x: x, y: y}));
+      }
+    }
+
+    function initRemoteLeap() {
+      var socket = io(remoteLeapServer);
+      socket.on('message', function(msg) {
+        if(!activeController) {
+          activatePaddle('remoteLeap');
+        }
+        if(activeController != 'remoteLeap') {
+          socket.removeAllListeners('paddlePosition');
+        }
+        var data = JSON.parse(msg);
+        updatePaddle(data.x, data.y);
+      });
+    }
+
+    function updatePaddle(x, y) {
+      paddle.position.x = 0 - (x / 30.0);
+      paddle.position.y = 3 + (y / 30.0);
+      //paddle.position.z = 5 - (z / 30.0);
     }
   </script>
   </body>
