@@ -1,0 +1,12 @@
+{
+    "name": "Ponger",
+    "version": "1.0.0",
+    "description": "A pong server",
+    "author": "Max Feldman",
+    "dependencies": {
+        "socket.io": "latest",
+        "socket.io-client": "latest"
+    },
+    "private": true
+}
+
