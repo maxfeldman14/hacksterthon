@@ -181,11 +181,23 @@
       paddle = boxMesh;
       scene.add( boxMesh );
 
-      paddle2 = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        transparent: true,
-        opacity: 0.5,
-      }));
+      // player 0 -> red
+      // player 1 -> blue
+      // but this is for other player
+      // so if we are player 0, the other player is red
+      if (player == '0') {
+        paddle2 = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial({
+          color: 0x0000ff,
+          transparent: true,
+          opacity: 0.5,
+        })); } else {
+        paddle2 = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+          transparent: true,
+          opacity: 0.5,
+        }));
+      }
+
       paddle2.position.y = 10;
       paddle2.position.z = 15;
       scene.add(paddle2);
@@ -351,12 +363,22 @@
       initOtherPlayer();
     }
 
+    // player 0 -> red
+    // player 1 -> blue
     function activatePaddle(controlType) {
-      paddle.material = new THREE.MeshBasicMaterial({
-        color: 0x0000ff,
-        transparent: true,
-        opacity: 0.2,
-      });
+      if (player == '0') {
+        paddle.material = new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+          transparent: true,
+          opacity: 0.2,
+        });
+      } else {
+        paddle.material = new THREE.MeshBasicMaterial({
+          color: 0x0000ff,
+          transparent: true,
+          opacity: 0.2,
+        });
+      }
       activeController = controlType;
     }
 
