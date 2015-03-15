@@ -30,6 +30,11 @@
     var camera, scene, renderer;
     var effect, controls;
     var element, container;
+    var paddle;
+    var ball;
+    var ballv;
+    var leapdata;
+    var score = 0;
 
     var clock = new THREE.Clock();
 
@@ -42,7 +47,9 @@
       container = document.getElementById('example');
       container.appendChild(element);
 
-      effect = new THREE.StereoEffect(renderer);
+      // Switch the commented line to disable/enable stereo
+      //effect = new THREE.StereoEffect(renderer);
+      effect = renderer;
 
       scene = new THREE.Scene();
 
@@ -51,11 +58,10 @@
       scene.add(camera);
 
       controls = new THREE.OrbitControls(camera, element);
-      controls.rotateUp(Math.PI / 4);
       controls.target.set(
-        camera.position.x + 0.1,
+        camera.position.x,
         camera.position.y,
-        camera.position.z
+        camera.position.z + 0.1
       );
       controls.noZoom = true;
       controls.noPan = true;
@@ -101,74 +107,36 @@
       mesh.rotation.x = -Math.PI / 2;
       scene.add(mesh);
 
-      var rectLength = 1, rectWidth = 1;
-
-      var rectShape = new THREE.Shape();
-      rectShape.moveTo( 0,0 );
-      rectShape.lineTo( 0, rectWidth );
-      rectShape.lineTo( rectLength, rectWidth );
-      rectShape.lineTo( rectLength, 0 );
-      rectShape.lineTo( 0, 0 );
-
-      var rectTex = THREE.ImageUtils.loadTexture(
-        'textures/patterns/max.png'
-      );
-      rectTex.anisotropy = renderer.getMaxAnisotropy();
-
-      var rectMat = new THREE.MeshPhongMaterial({
-        color: 0xffffff,
-        specular: 0xffffff,
-        shininess: 20,
-        shading: THREE.FlatShading,
-        map: rectTex,
+      var boxGeom = new THREE.BoxGeometry(3, 3, 0.2);
+      var boxMesh = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial( {
+        color: 0x777777,
         transparent: true,
-      });
-
-      var rectGeom = new THREE.ShapeGeometry( rectShape );
-
-      var rectMesh = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh.position.y += 5;
-      rectMesh.position.x -= 7.5;
-      rectMesh.position.z -= 15;
-      rectMesh.scale.x += 15;
-      rectMesh.scale.y += 15;
-      scene.add( rectMesh );
-
-      var rectMesh2 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh2.position.y += 5;
-      rectMesh2.position.x += 15;
-      rectMesh2.position.z -= 7.5;
-      rectMesh2.scale.x += 15;
-      rectMesh2.scale.y += 15;
-      rectMesh2.rotation.y = -Math.PI / 2;
-      scene.add( rectMesh2 );
-
-      var rectMesh3 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh3.position.y += 5;
-      rectMesh3.position.x += 7.5;
-      rectMesh3.position.z += 15;
-      rectMesh3.scale.x += 15;
-      rectMesh3.scale.y += 15;
-      rectMesh3.rotation.y = -Math.PI;
-      scene.add( rectMesh3 );
-
-      var rectMesh4 = new THREE.Mesh( rectGeom, rectMat) ;   
-      rectMesh4.position.y += 5;
-      rectMesh4.position.x -= 15;
-      rectMesh4.position.z += 7.5;
-      rectMesh4.scale.x += 15;
-      rectMesh4.scale.y += 15;
-      rectMesh4.rotation.y = Math.PI / 2;
-      scene.add( rectMesh4 );
-
-      var boxGeom = new THREE.BoxGeometry(1, 1, 1);
-      var boxMesh = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial( { color: 0x00ff00 }));
-      boxMesh.position.y += 3;
-
+        opacity: 0.5,
+      }));
+      boxMesh.position.y = 10;
+      boxMesh.position.z = 5;
+      
+      paddle = boxMesh;
       scene.add( boxMesh );
+
+      ball = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 32, 32),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+          }));
+      ball.position.y = 10;
+      ball.position.z = 15;
+      scene.add(ball);
+      ballv = {
+        x: 1,
+        y: 1,
+        z: -5,
+      };
 
       window.addEventListener('resize', resize, false);
       setTimeout(resize, 1);
+
+      initLeap();
     }
 
     function resize() {
@@ -188,6 +156,44 @@
       camera.updateProjectionMatrix();
 
       controls.update(dt);
+
+      ball.position.x += ballv.x * dt;
+      ball.position.y += ballv.y * dt;
+      ball.position.z += ballv.z * dt;
+      if (ball.position.x < -5 && ballv.x < 0 ||
+          ball.position.x > 5 && ballv.x > 0) {
+        ballv.x *= -1;
+      }
+      if (ball.position.y < 1 && ballv.y < 0 ||
+          ball.position.y > 10 && ballv.y > 0) {
+        ballv.y *= -1;
+      }
+      if(ball.position.z > 25 && ballv.z > 0) {
+        ballv.z *= -1;
+      }
+      if (ball.position.z < 6.2 && ballv.z < 0) {
+        if (ball.position.x > (paddle.position.x - 1.5) &&
+          ball.position.x < (paddle.position.x + 1.5) &&
+          ball.position.y > (paddle.position.y - 1.5) &&
+          ball.position.y < (paddle.position.y + 1.5)) {
+          ballv.z *= -1.05;
+          score += 1;
+        } else {
+          console.log("Lost!")
+          console.log("ball: " + ball.position.x + ", " + ball.position.y);
+          console.log("paddle: " + paddle.position.x + ", " + paddle.position.y);
+          ball.position.x = 0;
+          ball.position.y = 10;
+          ball.position.z = 15;
+          ballv = {
+            x: 1,
+            y: 1,
+            z: -5,
+          };
+          score = 0;
+        }
+      }
+
     }
 
     function render(dt) {
@@ -210,6 +216,41 @@
         container.mozRequestFullScreen();
       } else if (container.webkitRequestFullscreen) {
         container.webkitRequestFullscreen();
+      }
+    }
+
+    function initLeap() {
+      var ws = new WebSocket("ws://localhost:6437/v6.json");
+      ws.onopen = function(event) {
+        var enableMessage = JSON.stringify({enableGestures: true});
+        ws.send(enableMessage); // Enable gestures
+        ws.send(JSON.stringify({focused: true})); // claim focus
+
+        focusListener = window.addEventListener('focus', function(e) {
+                               ws.send(JSON.stringify({focused: true})); // claim focus
+                         });
+
+        blurListener = window.addEventListener('blur', function(e) {
+                               ws.send(JSON.stringify({focused: false})); // relinquish focus
+                         });
+
+        console.log("connected");
+        paddle.material = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          transparent: true,
+          opacity: 0.2,
+        });
+      }
+
+      ws.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        if (!data.hands || data.hands.length == 0) {
+          return;
+        }
+        hand = data.hands[0];
+        paddle.position.y = 3 + (hand.palmPosition[1] / 30.0);
+        paddle.position.x = 0 - (hand.palmPosition[0] / 30.0);
+        //paddle.position.z = 5 - (hand.palmPosition[2] / 50.0);
       }
     }
   </script>
