@@ -135,6 +135,7 @@
         z: -5,
       };
 
+
       window.addEventListener('resize', resize, false);
       setTimeout(resize, 1);
 
@@ -237,7 +238,7 @@
 
     function initLeap() {
       var ws = new WebSocket('ws://localhost:6437/v6.json');
-      var socket = io('ws://ponger.cloudapp.net');
+      var socket = io('ws://ponger.cloudapp.net:8080');
 
       ws.onopen = function(event) {
         var enableMessage = JSON.stringify({enableGestures: true});
@@ -266,7 +267,7 @@
     }
 
     function initRemoteLeap() {
-      var socket = io('ws://ponger.cloudapp.net');
+      var socket = io('ws://ponger.cloudapp.net:8080');
       socket.on('paddlePosition', function(msg) {
         if(!activeController) {
           activatePaddle('remoteLeap');
