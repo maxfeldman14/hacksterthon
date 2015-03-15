@@ -94,7 +94,7 @@
         effect = new THREE.StereoEffect(renderer);
       }
 
-      playerNmae = getParameterByName('player') || "0";
+      player = getParameterByName('player') || "0";
 
       scene = new THREE.Scene();
 
@@ -438,10 +438,14 @@
       });
     }
 
-    function updatePaddle(x, y) {
-      paddle.position.x = 0 - (x / 30.0);
-      paddle.position.y = 3 + (y / 30.0);
-      //paddle.position.z = 5 - (z / 30.0);
+    function updatePaddle(x, y, otherPlayer) {
+      var paddleToUpdate = paddle;
+      if (otherPlayer) {
+        paddleToUpdate = paddle2;
+      }
+      paddleToUpdate.position.x = 0 - (x / 30.0);
+      paddleToUpdate.position.y = 3 + (y / 30.0);
+      //paddleToUpdate.position.z = 5 - (z / 30.0);
     }
   </script>
   </body>
