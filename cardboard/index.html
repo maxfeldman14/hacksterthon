@@ -234,6 +234,11 @@
           paddle.position.y -= 1;
           break;
       }
+      remoteLeapSocket.emit(player , JSON.stringify({
+        type: 'paddle',
+        x: paddle.position.x * -30.0,
+        y: (paddle.position.y - 3) * 30
+      }));
     }
 
     function resize() {
@@ -268,7 +273,7 @@
       if(ball.position.z > 15 && ballv.z > 0) {
         ballv.z *= -1;
       }
-      if (ball.position.z < 6.2 && ballv.z < 0) {
+      if (ball.position.z < 6 && ballv.z < 0) {
         if (ball.position.x > (paddle.position.x - 2.5) &&
           ball.position.x < (paddle.position.x + 2.5) &&
           ball.position.y > (paddle.position.y - 2.5) &&
@@ -348,7 +353,7 @@
 
     function activatePaddle(controlType) {
       paddle.material = new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
+        color: 0x0000ff,
         transparent: true,
         opacity: 0.2,
       });
@@ -417,23 +422,39 @@
         if(activeController != 'remoteLeap') {
           remoteLeapSocket.removeAllListeners('paddlePosition');
         }
+        console.log("updating paddle from remote");
         var data = JSON.parse(msg);
-        updatePaddle(data.x, data.y);
+        if (data.type == 'paddle') {
+          updatePaddle(data.x, data.y);
+        }
       });
     }
 
     function initOtherPlayer() {
+      console.log('other player: ' + (player == '1' ? '0' : '1'));
       remoteLeapSocket.on(player == '1' ? '0' : '1', function(msg) {
         var data = JSON.parse(msg);
         if (data.type == 'paddle') {
-          updatePaddle(msg.x, msg.y, true);
+          console.log("updating other paddle");
+          updatePaddle(-1 * data.x, data.y, true);
         } else if(data.type == 'ball') {
-          ball.position.x = -1 * data.position.x;
-          ball.position.y = data.position.y;
-          ball.position.z = -1 * data.position.z + 30;
-          ballv.x = -1 * data.velocity.x;
-          ballv.y = data.velocity.y;
-          ballv.z = -1 * data.velocity.z;
+          console.log('update ball');
+          x = -1 * data.position.x;
+          y = data.position.y;
+          z = -1 * data.position.z + 21;
+          vx = -1 * data.velocity.x;
+          vy = data.velocity.y;
+          vz = -1 * data.velocity.z;
+          console.log('Old position: ' + ball.position.x + ', ' + ball.position.y + ', ' + ball.position.z);
+          console.log('New position: ' + x + ', ' + y + ', ' + z);
+          console.log('Old velocity: ' + ballv.x + ', ' + ballv.y + ', ' + ballv.z);
+          console.log('New velocity: ' + vx + ', ' + vy + ', ' + vz);
+          ball.position.x = x;
+          ball.position.y = y;
+          ball.position.z = z;
+          ballv.x = vx;
+          ballv.y = vy;
+          ballv.z = vz;
         }
       });
     }
