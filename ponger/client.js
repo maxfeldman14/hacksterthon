@@ -17,7 +17,7 @@ if (playerNum == '0') {
 
 var rl = readline.createInterface(process.stdin, process.stdout);
 
-socket.on(playerNum, function (data) {
+socket.on(listenFor, function (data) {
       console.log('other player sent an update');
       console.log(data.update);
 });
