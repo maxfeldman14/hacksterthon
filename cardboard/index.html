@@ -51,6 +51,8 @@
     var leapServer = 'ws://localhost:6437/v6.json';
     var remoteLeapServer = 'http://10.90.0.196:8080';
     var multiplayerServer = 'http://10.90.0.196:8080';
+    var oculusServer = 'ws://localhost:9000/';
+    var initialOculusDirection = null;
 
     var arena = {
       top: 14,
@@ -222,6 +224,9 @@
       setTimeout(resize, 1);
 
       initControl();
+      if (mode === 'oculus') {
+        initOculus();
+      }
     }
 
     function keypress(e) {
@@ -489,6 +494,48 @@
       paddleToUpdate.position.x = 0 - (x / 30.0);
       paddleToUpdate.position.y = 3 + (y / 30.0);
       //paddleToUpdate.position.z = 5 - (z / 30.0);
+    }
+
+    function initOculus() {
+      var ws = new WebSocket(oculusServer);
+
+      ws.onopen = function(event) {
+        console.log('connected to oculus');
+      }
+
+      ws.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        //console.log(data);
+        var normalized = {
+          rotx: data.rotx / data.rotw,
+          roty: data.roty / data.rotw,
+          rotz: data.rotz / data.rotw,
+        }
+        if (initialOculusDirection === null) {
+          initialOculusDirection = normalized;
+        }
+        var redirected = {
+          rotx: (normalized.rotx - initialOculusDirection.rotx),
+          roty: (normalized.roty - initialOculusDirection.roty),
+          rotz: (normalized.rotz - initialOculusDirection.rotz),
+        }
+        updateCameraFromOculus(redirected);
+      }
+    }
+
+    function updateCameraFromOculus(data) {
+      console.log(
+        "Updating cameria... " +
+        data.rotx.toFixed(6) +
+        " " +
+        data.roty.toFixed(6) +
+        " " +
+        data.rotz.toFixed(6)
+      );
+      //camera.up = new THREE.Vector3(0, 0, 1);
+      //camera.lookAt(new THREE.Vector3(data.rotx, data.roty, data.rotz));
+      //camera.updateProjectionMatrix();
+      camera.up = new THREE.Vector3(data.rotx, data.roty, data.rotz);
     }
   </script>
   </body>
