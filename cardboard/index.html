@@ -35,7 +35,7 @@
     var mode;  // cardboard, oculus, or mono
     var player; // "0" or "1"
     var camera, scene, renderer;
-    var effect, controls;
+    var effect;
     var element, container;
     var paddle;
     var ball;
@@ -102,31 +102,10 @@
 
       camera = new THREE.PerspectiveCamera(90, 1, 0.001, 700);
       camera.position.set(0, 10, -5);
+      camera.up = new THREE.Vector3(0, 1, 0);
+      camera.lookAt(new THREE.Vector3(0, 10, 100));
       scene.add(camera);
 
-      controls = new THREE.OrbitControls(camera, element);
-      controls.target.set(
-        camera.position.x,
-        camera.position.y,
-        camera.position.z + 0.1
-      );
-      controls.noZoom = true;
-      controls.noPan = true;
-
-      function setOrientationControls(e) {
-        if (!e.alpha) {
-          return;
-        }
-
-        controls = new THREE.DeviceOrientationControls(camera, true);
-        controls.connect();
-        controls.update();
-
-        element.addEventListener('click', fullscreen, false);
-
-        window.removeEventListener('deviceorientation', setOrientationControls, true);
-      }
-      window.addEventListener('deviceorientation', setOrientationControls, true);
       window.addEventListener('keypress', keypress, false);
       window.addEventListener('keydown', keydown, false);
 
@@ -273,8 +252,6 @@
       resize();
 
       camera.updateProjectionMatrix();
-
-      controls.update(dt);
 
       ball.position.x += ballv.x * dt;
       ball.position.y += ballv.y * dt;
@@ -524,18 +501,9 @@
     }
 
     function updateCameraFromOculus(data) {
-      console.log(
-        "Updating cameria... " +
-        data.rotx.toFixed(6) +
-        " " +
-        data.roty.toFixed(6) +
-        " " +
-        data.rotz.toFixed(6)
-      );
-      //camera.up = new THREE.Vector3(0, 0, 1);
-      //camera.lookAt(new THREE.Vector3(data.rotx, data.roty, data.rotz));
-      //camera.updateProjectionMatrix();
-      camera.up = new THREE.Vector3(data.rotx, data.roty, data.rotz);
+      camera.up = new THREE.Vector3(0, 1, 0);
+      camera.lookAt(new THREE.Vector3(data.rotx, data.roty, data.rotz));
+      camera.updateProjectionMatrix();
     }
   </script>
   </body>
