@@ -126,6 +126,7 @@
       }
       window.addEventListener('deviceorientation', setOrientationControls, true);
       window.addEventListener('keypress', keypress, false);
+      window.addEventListener('keydown', keydown, false);
 
 
       var light = new THREE.HemisphereLight(0x777777, 0x000000, 0.6);
@@ -215,6 +216,23 @@
       if (e.keyCode == 32) {
         console.log('toggle rendering');
         disableRendering = !disableRendering;
+      }
+    }
+
+    function keydown(e){
+      switch(e.keyCode) {
+        case 37:
+          paddle.position.x += 1;
+          break;
+        case 38:
+          paddle.position.y += 1;
+          break;
+        case 39:
+          paddle.position.x -= 1;
+          break;
+        case 40:
+          paddle.position.y -= 1;
+          break;
       }
     }
 
