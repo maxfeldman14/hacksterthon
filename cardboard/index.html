@@ -21,14 +21,18 @@
   <body>
     <div id="example"></div>
 
+  <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
   <script src="js/third-party/threejs/three.js"></script>
   <script src="js/third-party/threejs/StereoEffect.js"></script>
   <script src="js/third-party/threejs/DeviceOrientationControls.js"></script>
   <script src="js/third-party/threejs/OrbitControls.js"></script>
+  <script src="js/third-party/threejs/PlaneBufferGeometry.js"></script>
+  <script src="js/third-party/threejs/OculusRiftEffect.js"></script>
   <script src="https://cdn.socket.io/socket.io-1.3.4.js"></script>
   <script src="http://mrdoob.github.com/three.js/examples/fonts/helvetiker_regular.typeface.js"></script>
 
   <script>
+    var mode;  // cardboard, oculus, or mono
     var camera, scene, renderer;
     var effect, controls;
     var element, container;
@@ -55,6 +59,13 @@
       back: 15,
     }
 
+    function getParameterByName(name) {
+        name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+        var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+            results = regex.exec(location.search);
+        return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+
     init();
     animate();
 
@@ -64,9 +75,22 @@
       container = document.getElementById('example');
       container.appendChild(element);
 
-      // Switch the commented line to disable/enable stereo
-      effect = new THREE.StereoEffect(renderer);
-      //effect = renderer;
+      mode = getParameterByName('mode');
+      if (mode === 'oculus' || mode === 'oculus/') {
+        mode = 'oculus';
+      } else if (mode === 'mono' || mode === 'mono/') {
+        mode = 'mono';
+      } else {
+        mode = 'cardboard';
+      }
+
+      if (mode === 'oculus') {
+        effect = new THREE.OculusRiftEffect(renderer);
+      } else if (mode === 'mono') {
+        effect = renderer;
+      } else {
+        effect = new THREE.StereoEffect(renderer);
+      }
 
       scene = new THREE.Scene();
 
