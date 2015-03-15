@@ -38,8 +38,22 @@
     var leapdata;
     var score = 0;
     var activeController = null;
+    var disableRendering = false;
 
     var clock = new THREE.Clock();
+
+    var leapServer = 'ws://localhost:6437/v6.json';
+    var remoteLeapServer = 'http://10.90.0.196:8080';
+    var multiplayerServer = 'http://10.90.0.196:8080';
+
+    var arena = {
+      top: 14,
+      bottom: 5,
+      left: -5,
+      right: 5,
+      front: -10,
+      back: 15,
+    }
 
     init();
     animate();
@@ -57,7 +71,7 @@
       scene = new THREE.Scene();
 
       camera = new THREE.PerspectiveCamera(90, 1, 0.001, 700);
-      camera.position.set(0, 10, 0);
+      camera.position.set(0, 10, -5);
       scene.add(camera);
 
       controls = new THREE.OrbitControls(camera, element);
@@ -83,6 +97,7 @@
         window.removeEventListener('deviceorientation', setOrientationControls, true);
       }
       window.addEventListener('deviceorientation', setOrientationControls, true);
+      window.addEventListener('keypress', keypress, false);
 
 
       var light = new THREE.HemisphereLight(0x777777, 0x000000, 0.6);
@@ -101,7 +116,8 @@
         specular: 0xffffff,
         shininess: 20,
         shading: THREE.FlatShading,
-        map: texture
+        map: texture,
+        side: THREE.DoubleSide
       });
 
       var geometry = new THREE.PlaneGeometry(1000, 1000);
@@ -109,6 +125,20 @@
       var mesh = new THREE.Mesh(geometry, material);
       mesh.rotation.x = -Math.PI / 2;
       scene.add(mesh);
+
+      var arenaGeom = new THREE.BoxGeometry(
+          arena.right - arena.left,
+          arena.top - arena.bottom,
+          0.1);
+      var arenaMesh = new THREE.Mesh(arenaGeom, new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.5
+      }));
+      arenaMesh.position.x = (arena.right + arena.left) / 2.0;
+      arenaMesh.position.y = (arena.top + arena.bottom) / 2.0;
+      arenaMesh.position.z = arena.back;
+      scene.add(arenaMesh);
 
       var boxGeom = new THREE.BoxGeometry(3, 3, 0.2);
       var boxMesh = new THREE.Mesh(boxGeom, new THREE.MeshBasicMaterial( {
@@ -144,6 +174,13 @@
       initControl();
     }
 
+    function keypress(e) {
+      if (e.keyCode == 32) {
+        console.log('toggle rendering');
+        disableRendering = !disableRendering;
+      }
+    }
+
     function resize() {
       var width = container.offsetWidth;
       var height = container.offsetHeight;
@@ -177,17 +214,16 @@
         ballv.z *= -1;
       }
       if (ball.position.z < 6.2 && ballv.z < 0) {
-        if (ball.position.x > (paddle.position.x - 1.5) &&
-          ball.position.x < (paddle.position.x + 1.5) &&
-          ball.position.y > (paddle.position.y - 1.5) &&
-          ball.position.y < (paddle.position.y + 1.5)) {
+        if (ball.position.x > (paddle.position.x - 2.5) &&
+          ball.position.x < (paddle.position.x + 2.5) &&
+          ball.position.y > (paddle.position.y - 2.5) &&
+          ball.position.y < (paddle.position.y + 2.5)) {
+          ballv.x *= 1.05;
+          ballv.y *= 1.05;
           ballv.z *= -1.05;
           score += 1;
           updateScore();
         } else {
-          console.log('Lost!')
-          console.log('ball: ' + ball.position.x + ', ' + ball.position.y);
-          console.log('paddle: ' + paddle.position.x + ', ' + paddle.position.y);
           ball.position.x = 0;
           ball.position.y = 10;
           ball.position.z = 15;
@@ -208,6 +244,9 @@
     }
 
     function animate(t) {
+      if (disableRendering) {
+        return;
+      }
       requestAnimationFrame(animate);
 
       update(clock.getDelta());
@@ -262,8 +301,8 @@
     }
 
     function initLeap() {
-      var ws = new WebSocket('ws://localhost:6437/v6.json');
-      var socket = io('http://10.90.3.191:8080');
+      var ws = new WebSocket(leapServer);
+      var socket = io(remoteLeapServer);
 
       ws.onopen = function(event) {
         var enableMessage = JSON.stringify({enableGestures: true});
@@ -291,13 +330,12 @@
         if (activeController == "localLeap") {
           updatePaddle(x, y);
         }
-        console.log(JSON.stringify({x: x, y: y}));
         socket.emit('send', JSON.stringify({x: x, y: y}));
       }
     }
 
     function initRemoteLeap() {
-      var socket = io('http://10.90.3.191:8080');
+      var socket = io(remoteLeapServer);
       socket.on('message', function(msg) {
         if(!activeController) {
           activatePaddle('remoteLeap');
