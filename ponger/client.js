@@ -6,6 +6,15 @@ var socket = socketio.connect(process.argv[2]);
 
 // cmd line arg of which player we are
 var playerNum = process.argv[3];
+var listenFor;
+
+// the player number being broadcast will be the origin, not the intended receiver
+if (playerNum == '0') {
+    listenFor = '1';
+} else if (playerNum == '1') {
+    listenFor = '0';
+}
+
 var rl = readline.createInterface(process.stdin, process.stdout);
 
 socket.on(playerNum, function (data) {
