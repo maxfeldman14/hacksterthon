@@ -502,8 +502,21 @@
     }
 
     function updateCameraFromOculus(data) {
-      camera.up = new THREE.Vector3(0, 1, 0);
-      camera.lookAt(new THREE.Vector3(data.rotx, data.roty, data.rotz));
+      var rotationQ = new THREE.Vector4(data.rotx, data.roty, data.rotz, 1);
+      var up = new THREE.Vector4(0, 1, 0, 1);
+      var rotationMatrix = new THREE.Matrix4().identity();
+      rotationMatrix.makeRotationFromQuaternion(rotationQ);
+      up.applyMatrix4(rotationMatrix);
+
+      var initialLookAt = new THREE.Vector4(0, 10, 100, 1);
+      rotationMatrix = new THREE.Matrix4().identity();
+      rotationMatrix.makeRotationFromQuaternion(rotationQ);
+      initialLookAt.applyMatrix4(rotationMatrix);
+
+      //camera.up = new THREE.Vector3(0, 1, 0);
+      camera.up = up;
+      //camera.lookAt(new THREE.Vector3(data.rotx, data.roty, data.rotz));
+      camera.lookAt(initialLookAt);
       camera.updateProjectionMatrix();
     }
   </script>
